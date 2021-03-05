@@ -1,0 +1,65 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: che
+  namespace: che
+  labels:
+    app: che
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: che
+  template:
+    metadata:
+      labels:
+        app: che
+    spec:
+      containers:
+        - name: che
+          image: quay.io/mvala/che-auth-testapp:latest
+          resources:
+            requests:
+              memory: "32Mi"
+              cpu: "100m"
+            limits:
+              memory: "32Mi"
+              cpu: "100m"
+          ports:
+            - containerPort: 8080
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: che
+  namespace: che
+spec:
+  selector:
+    app: che
+  ports:
+    - protocol: TCP
+      port: 8080
+      targetPort: 8080
+---
+kind: Ingress
+apiVersion: networking.k8s.io/v1
+metadata:
+  name: che
+  namespace: che
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+spec:
+  rules:
+    - host: che.192.168.39.78.nip.io
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: che
+                port:
+                  number: 8080

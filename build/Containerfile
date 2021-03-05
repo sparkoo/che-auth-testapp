@@ -1,0 +1,28 @@
+# Build the manager binary
+FROM quay.io/libpod/golang:1.13 as builder
+
+USER root
+
+RUN go env GOPROXY
+WORKDIR /che-auth-testapp
+# Copy the Go Modules manifests
+COPY go.mod go.mod
+COPY go.sum go.sum
+# cache deps before building and copying source so that we don't need to re-download as much
+# and so that source changes don't invalidate our downloaded layer
+RUN go mod download
+
+# Copy the go source
+COPY . .
+
+# compile workspace controller binaries
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GO111MODULE=on go build \
+  -a -o _output/bin/che-auth-testapp \
+  -gcflags all=-trimpath=/ \
+  -asmflags all=-trimpath=/ \
+  cmd/main.go
+
+FROM registry.access.redhat.com/ubi8-minimal:8.2-349
+COPY --from=builder /che-auth-testapp/_output/bin/che-auth-testapp /usr/local/bin/che-auth-testapp
+
+CMD /usr/local/bin/che-auth-testapp
