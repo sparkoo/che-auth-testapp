@@ -20,12 +20,7 @@ func main() {
 }
 
 func handler(w http.ResponseWriter, r *http.Request) {
-    var namespace string
-    if len(r.URL.Path[1:]) != 0 {
-        namespace = r.URL.Path[1:]
-    } else {
-        namespace = "default"
-    }
+    namespace := extractNamespace(r)
     fmt.Fprintf(w, "Hi there, Try to get resources from [%s] namespace.\n", namespace)
 
     client, err := k8sClient(w, r)
@@ -37,6 +32,70 @@ func handler(w http.ResponseWriter, r *http.Request) {
         writeSectets(client, namespace, w)
         writePods(client, namespace, w)
     }
+}
+
+func extractNamespace(r *http.Request) string {
+    var namespace string
+    if len(r.URL.Path[1:]) != 0 {
+        namespace = r.URL.Path[1:]
+    } else {
+        namespace = "default"
+    }
+    return namespace
+}
+
+func k8sClient(w http.ResponseWriter, r *http.Request) (*kubernetes.Clientset, error) {
+    token, err := extractBearerToken(r)
+    if err != nil {
+        return nil, err
+    }
+    fmt.Fprintf(w, "Using authorization bearer token [%s]\n", token)
+
+    config, err := k8sClientConfig(token)
+    if err != nil {
+        return nil, err
+    }
+
+    return kubernetes.NewForConfig(config)
+}
+
+func extractBearerToken(r *http.Request) (string, error) {
+    authorizationHeader := r.Header.Get("Authorization")
+    if len(authorizationHeader) == 0 {
+        return "", errors.New("no Authorization header found")
+    }
+
+    if !strings.HasPrefix(authorizationHeader, "Bearer ") {
+        return "", errors.New("no Authorization Bearer token found")
+    }
+
+    token := authorizationHeader[len("Bearer "):]
+
+    return token, nil
+}
+
+func k8sClientConfig(token string) (*rest.Config, error) {
+    host, port := os.Getenv("KUBERNETES_SERVICE_HOST"), os.Getenv("KUBERNETES_SERVICE_PORT")
+    if len(host) == 0 || len(port) == 0 {
+        return nil, errors.New("unable to load in-cluster configuration, KUBERNETES_SERVICE_HOST and KUBERNETES_SERVICE_PORT must be defined")
+    }
+
+    var rootCaFile string
+    if rootCaEnv, ok := os.LookupEnv("MINIKUBE_ROOT_CA"); ok {
+        rootCaFile = rootCaEnv
+    } else {
+        rootCaFile = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+    }
+
+    tlsClientConfig := rest.TLSClientConfig{
+        CAFile: rootCaFile,
+    }
+
+    return &rest.Config{
+        Host:            "https://" + net.JoinHostPort(host, port),
+        TLSClientConfig: tlsClientConfig,
+        BearerToken:     token,
+    }, nil
 }
 
 func writeConfigMaps(client *kubernetes.Clientset, namespace string, w http.ResponseWriter) {
@@ -73,59 +132,4 @@ func writePods(client *kubernetes.Clientset, namespace string, w http.ResponseWr
             fmt.Fprintf(w, " - %s\n", pod.Name)
         }
     }
-}
-
-func k8sClient(w http.ResponseWriter, r *http.Request) (*kubernetes.Clientset, error) {
-    token, err := extractBearerToken(r)
-    if err != nil {
-        return nil, err
-    }
-    fmt.Fprintf(w, "Using authorization bearer token [%s]\n", token)
-
-    config, err := k8sClientConfig(token)
-    if err != nil {
-        return nil, err
-    }
-
-    return kubernetes.NewForConfig(config)
-}
-
-func extractBearerToken(r *http.Request) (string, error) {
-    authorizationHeader := r.Header.Get("Authorization")
-    if len(authorizationHeader) == 0 {
-        return "", errors.New("no Authorization header found")
-    }
-
-    if !strings.HasPrefix(authorizationHeader, "Bearer ") {
-        return "", errors.New("no Authorization Bearer token found")
-    }
-
-    token := authorizationHeader[len("Bearer "):]
-
-    return token, nil
-}
-
-
-func k8sClientConfig(token string) (*rest.Config, error) {
-    host, port := os.Getenv("KUBERNETES_SERVICE_HOST"), os.Getenv("KUBERNETES_SERVICE_PORT")
-    if len(host) == 0 || len(port) == 0 {
-        return nil, errors.New("unable to load in-cluster configuration, KUBERNETES_SERVICE_HOST and KUBERNETES_SERVICE_PORT must be defined")
-    }
-
-    var rootCaFile string
-    if rootCaEnv, ok := os.LookupEnv("MINIKUBE_ROOT_CA"); ok {
-        rootCaFile = rootCaEnv
-    } else {
-        rootCaFile = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
-    }
-
-    tlsClientConfig := rest.TLSClientConfig{
-        CAFile: rootCaFile,
-    }
-
-    return &rest.Config{
-        Host:            "https://" + net.JoinHostPort(host, port),
-        TLSClientConfig: tlsClientConfig,
-        BearerToken:     token,
-    }, nil
 }
