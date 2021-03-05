@@ -17,13 +17,13 @@ It reads the Authorization bearer token from the request header, and uses the to
 It then reads the request path and uses it as a namespace to query several k8s objects.
 
 ### How to use is
-#### Simple minikube
- - `minikube.sh` script will start new minikube instance with 5 users `user[1-5]` (defined in `minikube_users.csv`).
- - `kc apply`
-    - `01_namespaces.yaml` - namespaces for the users `user[1-5]-ns`
-    - `02_rbac.yaml` - admin roles for the users only to their namespace 
-    - `03_deployment.yaml` - deployment of this test app to `che` namespaces
- - `test.sh <URL> <NAMESPACE> <TOKEN>` - test script to test the setup
+#### Simple minikube setup
+ 1. `minikube.sh` script will start new minikube instance with 5 users `user[1-5]` (defined in `minikube_users.csv`).
+ 2. `kc apply`
+    1. `01_namespaces.yaml` - namespaces for the users `user[1-5]-ns`
+    2. `02_rbac.yaml` - admin roles for the users only to their namespace 
+    3. `03_deployment.yaml` - deployment of this test app to `che` namespaces
+ 3. `test.sh <URL> <NAMESPACE> <TOKEN>` - test script to test the setup
 
 ### Exmaple
 #### Successful authentication and authorization
