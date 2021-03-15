@@ -51,6 +51,8 @@ func parseArgs() *Conf {
 }
 
 func handler(w http.ResponseWriter, r *http.Request) {
+    log.Printf("%+v", r)
+
     page := &Page{}
 
     err := r.ParseForm()
@@ -58,7 +60,6 @@ func handler(w http.ResponseWriter, r *http.Request) {
         http.Error(w, err.Error(), http.StatusInternalServerError)
         return
     }
-
 
     if namespace := r.Form.Get("namespace"); len(namespace) > 0 {
         page.Namespace = namespace
