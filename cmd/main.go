@@ -70,6 +70,10 @@ func handler(w http.ResponseWriter, r *http.Request) {
         page.Token = token
     } else {
         page.Token = ""
+        if token, err := extractBearerToken(r); err == nil && len(token) > 0 {
+            page.Token = token
+            log.Println("Using bearer token from the authorization header.")
+        }
     }
 
     client, err := k8sClient(page.Token)
