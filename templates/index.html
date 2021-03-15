@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Auth test app</title>
+</head>
+<body>
+<form name="test" action="">
+  <label for="namespace">Namespace: </label>
+  <br/>
+  <input type="text" name="namespace" id="namespace" value="{{ .Namespace }}"/>
+  <br/>
+  <br/>
+
+  <label for="token">Token:</label>
+  <br/>
+  <textarea id="token" cols="100" rows="10" name="token">{{ .Token }}</textarea>
+  <br/>
+
+  <br/>
+  <br/>
+  <input type="submit" value="Try" />
+</form>
+<p>
+  output:
+  <pre>
+{{ .Output }}
+  </pre>
+</p>
+</body>
+</html>

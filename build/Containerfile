@@ -17,12 +17,15 @@ COPY . .
 
 # compile workspace controller binaries
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GO111MODULE=on go build \
-  -a -o _output/bin/che-auth-testapp \
+  -a -o _output/che-auth-testapp \
   -gcflags all=-trimpath=/ \
   -asmflags all=-trimpath=/ \
   cmd/main.go
 
 FROM registry.access.redhat.com/ubi8-minimal:8.2-349
-COPY --from=builder /che-auth-testapp/_output/bin/che-auth-testapp /usr/local/bin/che-auth-testapp
+COPY --from=builder /che-auth-testapp/_output/che-auth-testapp /opt/che-auth-testapp/
+COPY --from=builder /che-auth-testapp/templates/ /opt/che-auth-testapp/templates/
 
-CMD /usr/local/bin/che-auth-testapp
+WORKDIR /opt/che-auth-testapp
+
+CMD /opt/che-auth-testapp/che-auth-testapp

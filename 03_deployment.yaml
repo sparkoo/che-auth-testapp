@@ -53,7 +53,7 @@ metadata:
     nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
 spec:
   rules:
-    - host: che.192.168.39.78.nip.io
+    - host: che.192.168.39.169.nip.io
       http:
         paths:
           - path: /

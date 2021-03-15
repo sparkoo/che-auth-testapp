@@ -3,7 +3,10 @@ package main
 import (
     "context"
     "errors"
+    "flag"
     "fmt"
+    "html/template"
+    "io"
     v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
     "k8s.io/client-go/kubernetes"
     "k8s.io/client-go/rest"
@@ -11,46 +14,88 @@ import (
     "net"
     "net/http"
     "os"
+    "path"
     "strings"
 )
 
+type Conf struct {
+    Bind string
+}
+
+type Page struct {
+    Token     string
+    Namespace string
+    Output    string
+}
+
+func (page *Page) Write(p []byte) (n int, err error) {
+    page.Output = page.Output + string(p)
+    return len(p), nil
+}
+
 func main() {
+    conf := parseArgs()
     http.HandleFunc("/", handler)
-    log.Fatal(http.ListenAndServe(":8080", nil))
+    log.Println("Listening on ", conf.Bind, " ...")
+    log.Fatal(http.ListenAndServe(conf.Bind, nil))
+}
+
+func parseArgs() *Conf {
+    var conf = &Conf{}
+
+    flag.StringVar(&conf.Bind, "bind", ":8080", "your github username, can be set with GITHUB_USERNAME env variable")
+
+    flag.Parse()
+
+    return conf
 }
 
 func handler(w http.ResponseWriter, r *http.Request) {
-    namespace := extractNamespace(r)
-    fmt.Fprintf(w, "Hi there, Try to get resources from [%s] namespace.\n", namespace)
+    page := &Page{}
 
-    client, err := k8sClient(w, r)
+    err := r.ParseForm()
     if err != nil {
-        fmt.Fprintf(w, "Something went wrong. I can't create a k8s client. [%s]\n", err)
+        http.Error(w, err.Error(), http.StatusInternalServerError)
+        return
+    }
+
+
+    if namespace := r.Form.Get("namespace"); len(namespace) > 0 {
+        page.Namespace = namespace
     } else {
-        fmt.Fprintln(w)
-        writeConfigMaps(client, namespace, w)
-        writeSectets(client, namespace, w)
-        writePods(client, namespace, w)
+        page.Namespace = "che"
+    }
+
+    if token := r.Form.Get("token"); len(token) > 0 {
+        page.Token = token
+    } else {
+        page.Token = ""
+    }
+
+    client, err := k8sClient(page.Token)
+
+    if err != nil {
+        http.Error(w, err.Error(), http.StatusInternalServerError)
+        return
+    } else {
+        writeConfigMaps(client, page.Namespace, page)
+        writeSectets(client, page.Namespace, page)
+        writePods(client, page.Namespace, page)
+    }
+
+    fp := path.Join("templates", "index.html")
+    tmpl, err := template.ParseFiles(fp)
+    if err != nil {
+        http.Error(w, err.Error(), http.StatusInternalServerError)
+        return
+    }
+
+    if err := tmpl.Execute(w, page); err != nil {
+        http.Error(w, err.Error(), http.StatusInternalServerError)
     }
 }
 
-func extractNamespace(r *http.Request) string {
-    var namespace string
-    if len(r.URL.Path[1:]) != 0 {
-        namespace = r.URL.Path[1:]
-    } else {
-        namespace = "default"
-    }
-    return namespace
-}
-
-func k8sClient(w http.ResponseWriter, r *http.Request) (*kubernetes.Clientset, error) {
-    token, err := extractBearerToken(r)
-    if err != nil {
-        return nil, err
-    }
-    fmt.Fprintf(w, "Using authorization bearer token [%s]\n", token)
-
+func k8sClient(token string) (*kubernetes.Clientset, error) {
     config, err := k8sClientConfig(token)
     if err != nil {
         return nil, err
@@ -98,7 +143,7 @@ func k8sClientConfig(token string) (*rest.Config, error) {
     }, nil
 }
 
-func writeConfigMaps(client *kubernetes.Clientset, namespace string, w http.ResponseWriter) {
+func writeConfigMaps(client *kubernetes.Clientset, namespace string, w io.Writer) {
     configMaps, err := client.CoreV1().ConfigMaps(namespace).List(context.TODO(), v1.ListOptions{})
     if err != nil {
         fmt.Fprintf(w, "Something went wrong. I can't get the configMaps. [%s]\n", err)
@@ -110,7 +155,7 @@ func writeConfigMaps(client *kubernetes.Clientset, namespace string, w http.Resp
     }
 }
 
-func writeSectets(client *kubernetes.Clientset, namespace string, w http.ResponseWriter) {
+func writeSectets(client *kubernetes.Clientset, namespace string, w io.Writer) {
     secrets, err := client.CoreV1().Pods(namespace).List(context.TODO(), v1.ListOptions{})
     if err != nil {
         fmt.Fprintf(w, "Something went wrong. I can't get the secrets. [%s]\n", err)
@@ -122,7 +167,7 @@ func writeSectets(client *kubernetes.Clientset, namespace string, w http.Respons
     }
 }
 
-func writePods(client *kubernetes.Clientset, namespace string, w http.ResponseWriter) {
+func writePods(client *kubernetes.Clientset, namespace string, w io.Writer) {
     pods, err := client.CoreV1().Pods(namespace).List(context.TODO(), v1.ListOptions{})
     if err != nil {
         fmt.Fprintf(w, "Something went wrong. I can't get the pods. [%s]\n", err)
