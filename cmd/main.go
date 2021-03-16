@@ -65,7 +65,7 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 
 func handler(w http.ResponseWriter, r *http.Request) {
     if page, err := handle(w, r); err == nil {
-        tmpl, err := template.ParseFiles("templates/index.html", "templates/output.html")
+        tmpl, err := template.ParseFiles("templates/index.html")
         if err != nil {
             http.Error(w, err.Error(), http.StatusInternalServerError)
             return

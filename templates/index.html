@@ -20,38 +20,39 @@
   <br/>
   <br/>
   <input type="submit" value="Try"/>
+  <input type="button" value="Try with authorization header" onclick="sendData()"/>
 </form>
 
-{{ template "output" . }}
+<div>
+  <p>
+  <h3>output:</h3>
+  <pre id="output" style="border: 1px #aaa solid; background-color: #eee; padding: 5px; word-wrap: break-word; white-space: pre-wrap;">
+{{ .Output }}
+  </pre>
+  </p>
+</div>
 
 <script>
-  window.addEventListener("load", function () {
-    function sendData() {
-      const XHR = new XMLHttpRequest();
+  function sendData() {
+    const XHR = new XMLHttpRequest();
 
-      XHR.addEventListener("load", function (event) {
-        const outputElement = document.getElementById("output");
-        outputElement.innerText = event.target.responseText;
-      });
+    XHR.addEventListener("load", function (event) {
+      const outputElement = document.getElementById("output");
+      outputElement.innerText = event.target.responseText;
+    });
 
-      XHR.addEventListener("error", function () {
-        alert('Oops! Something went wrong.');
-      });
-
-      const formData = new FormData(form);
-      XHR.open("GET", "/query?namespace=" + formData.get("namespace"), true);
-      if (formData.get("token")) {
-        XHR.setRequestHeader('Authorization', 'Bearer ' + formData.get("token"));
-      }
-      XHR.send();
-    }
+    XHR.addEventListener("error", function () {
+      alert('Oops! Something went wrong.');
+    });
 
     const form = document.getElementById("testForm");
-    form.addEventListener("submit", function (event) {
-      event.preventDefault();
-      sendData();
-    });
-  });
+    const formData = new FormData(form);
+    XHR.open("GET", "/query?namespace=" + formData.get("namespace"), true);
+    if (formData.get("token")) {
+      XHR.setRequestHeader('Authorization', 'Bearer ' + formData.get("token"));
+    }
+    XHR.send();
+  }
 </script>
 </body>
 </html>
