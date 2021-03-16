@@ -14,7 +14,6 @@ import (
     "net"
     "net/http"
     "os"
-    "path"
     "strings"
 )
 
@@ -23,9 +22,14 @@ type Conf struct {
 }
 
 type Page struct {
-    Token     string
-    Namespace string
-    Output    string
+    Token                string
+    Namespace            string
+    Output               string
+}
+
+func (page *Page) Writeln(s string) {
+    page.Write([]byte(s))
+    page.Write([]byte("\n"))
 }
 
 func (page *Page) Write(p []byte) (n int, err error) {
@@ -36,6 +40,7 @@ func (page *Page) Write(p []byte) (n int, err error) {
 func main() {
     conf := parseArgs()
     http.HandleFunc("/", handler)
+    http.HandleFunc("/query", handleQuery)
     log.Println("Listening on ", conf.Bind, " ...")
     log.Fatal(http.ListenAndServe(conf.Bind, nil))
 }
@@ -50,7 +55,31 @@ func parseArgs() *Conf {
     return conf
 }
 
+func handleQuery(w http.ResponseWriter, r *http.Request) {
+    if page, err := handle(w, r); err == nil {
+        w.Write([]byte(page.Output))
+    } else {
+        http.Error(w, err.Error(), http.StatusInternalServerError)
+    }
+}
+
 func handler(w http.ResponseWriter, r *http.Request) {
+    if page, err := handle(w, r); err == nil {
+        tmpl, err := template.ParseFiles("templates/index.html", "templates/output.html")
+        if err != nil {
+            http.Error(w, err.Error(), http.StatusInternalServerError)
+            return
+        }
+
+        if err := tmpl.Execute(w, page); err != nil {
+            http.Error(w, err.Error(), http.StatusInternalServerError)
+        }
+    } else {
+        http.Error(w, err.Error(), http.StatusInternalServerError)
+    }
+}
+
+func handle(w http.ResponseWriter, r *http.Request) (*Page, error) {
     log.Printf("%+v", r)
 
     page := &Page{}
@@ -58,15 +87,19 @@ func handler(w http.ResponseWriter, r *http.Request) {
     err := r.ParseForm()
     if err != nil {
         http.Error(w, err.Error(), http.StatusInternalServerError)
-        return
+        return nil, err
     }
 
+    // handle the namespace
     if namespace := r.Form.Get("namespace"); len(namespace) > 0 {
+        log.Println("Using namespace from get param", namespace)
         page.Namespace = namespace
     } else {
+        log.Println("using default namespace")
         page.Namespace = "che"
     }
 
+    // handle token
     if token := r.Form.Get("token"); len(token) > 0 {
         page.Token = token
     } else {
@@ -76,28 +109,44 @@ func handler(w http.ResponseWriter, r *http.Request) {
             log.Println("Using bearer token from the authorization header.")
         }
     }
+    log.Println("token: ", page.Token)
 
+    // request k8s
     client, err := k8sClient(page.Token)
-
     if err != nil {
         http.Error(w, err.Error(), http.StatusInternalServerError)
-        return
+        return nil, err
     } else {
         writeConfigMaps(client, page.Namespace, page)
         writeSectets(client, page.Namespace, page)
         writePods(client, page.Namespace, page)
     }
+    page.Writeln("")
 
-    fp := path.Join("templates", "index.html")
-    tmpl, err := template.ParseFiles(fp)
-    if err != nil {
-        http.Error(w, err.Error(), http.StatusInternalServerError)
-        return
-    }
+    // authorization headers
+    page.Writeln("Authorization Headers")
+    page.Writeln("=====================")
+    page.Writeln(strings.Join(r.Header.Values("Authorization"), "\n"))
+    page.Writeln("")
 
-    if err := tmpl.Execute(w, page); err != nil {
-        http.Error(w, err.Error(), http.StatusInternalServerError)
+    // headers
+    var sb strings.Builder
+    // Loop over header names
+    for name, values := range r.Header {
+        // skip authorization
+        if name != "Authorization" {
+            // Loop over all values for the name.
+            for _, value := range values {
+                sb.WriteString(fmt.Sprintf("%s: %s\n", name, value))
+            }
+        }
     }
+    page.Writeln("Other headers")
+    page.Writeln("=============")
+    page.Writeln(sb.String())
+    page.Writeln("")
+
+    return page, nil
 }
 
 func k8sClient(token string) (*kubernetes.Clientset, error) {

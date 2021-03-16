@@ -5,7 +5,7 @@
   <title>Auth test app</title>
 </head>
 <body>
-<form name="test" action="">
+<form name="testForm" id="testForm" action="">
   <label for="namespace">Namespace: </label>
   <br/>
   <input type="text" name="namespace" id="namespace" value="{{ .Namespace }}"/>
@@ -19,13 +19,39 @@
 
   <br/>
   <br/>
-  <input type="submit" value="Try" />
+  <input type="submit" value="Try"/>
 </form>
-<p>
-  output:
-  <pre>
-{{ .Output }}
-  </pre>
-</p>
+
+{{ template "output" . }}
+
+<script>
+  window.addEventListener("load", function () {
+    function sendData() {
+      const XHR = new XMLHttpRequest();
+
+      XHR.addEventListener("load", function (event) {
+        const outputElement = document.getElementById("output");
+        outputElement.innerText = event.target.responseText;
+      });
+
+      XHR.addEventListener("error", function () {
+        alert('Oops! Something went wrong.');
+      });
+
+      const formData = new FormData(form);
+      XHR.open("GET", "/query?namespace=" + formData.get("namespace"), true);
+      if (formData.get("token")) {
+        XHR.setRequestHeader('Authorization', 'Bearer ' + formData.get("token"));
+      }
+      XHR.send();
+    }
+
+    const form = document.getElementById("testForm");
+    form.addEventListener("submit", function (event) {
+      event.preventDefault();
+      sendData();
+    });
+  });
+</script>
 </body>
 </html>

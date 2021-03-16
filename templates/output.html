@@ -1,0 +1,12 @@
+{{ define "output" }}
+<div>
+  <p>
+  <h3>output:</h3>
+  <pre id="output" style="border: 1px #aaa solid; background-color: #eee; padding: 5px; word-wrap: break-word; white-space: pre-wrap;">
+{{ .Output }}
+  </pre>
+  </p>
+</div>
+{{ end }}
+
+{{ template "output" . }}
