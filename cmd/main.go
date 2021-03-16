@@ -126,7 +126,7 @@ func handle(w http.ResponseWriter, r *http.Request) (*Page, error) {
     // authorization headers
     page.Writeln("Authorization Headers")
     page.Writeln("=====================")
-    page.Writeln(strings.Join(r.Header.Values("Authorization"), "\n"))
+    page.Writeln(strings.Join(r.Header["Authorization"], "\n"))
     page.Writeln("")
 
     // headers
