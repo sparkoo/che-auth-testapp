@@ -133,15 +133,12 @@ func handle(w http.ResponseWriter, r *http.Request) (*Page, error) {
     var sb strings.Builder
     // Loop over header names
     for name, values := range r.Header {
-        // skip authorization
-        if name != "Authorization" {
-            // Loop over all values for the name.
-            for _, value := range values {
-                sb.WriteString(fmt.Sprintf("%s: %s\n", name, value))
-            }
+        // Loop over all values for the name.
+        for _, value := range values {
+            sb.WriteString(fmt.Sprintf("%s: %s\n", name, value))
         }
     }
-    page.Writeln("Other headers")
+    page.Writeln("Headers")
     page.Writeln("=============")
     page.Writeln(sb.String())
     page.Writeln("")
