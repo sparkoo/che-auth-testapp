@@ -17,6 +17,8 @@ import (
     "strings"
 )
 
+var conf = &Conf{}
+
 type Conf struct {
     Bind string
 }
@@ -37,6 +39,7 @@ func (page *Page) Write(p []byte) (n int, err error) {
     return len(p), nil
 }
 
+
 func main() {
     conf := parseArgs()
     http.HandleFunc("/", handler)
@@ -46,8 +49,6 @@ func main() {
 }
 
 func parseArgs() *Conf {
-    var conf = &Conf{}
-
     flag.StringVar(&conf.Bind, "bind", ":8080", "your github username, can be set with GITHUB_USERNAME env variable")
 
     flag.Parse()
@@ -146,6 +147,7 @@ func handle(w http.ResponseWriter, r *http.Request) (*Page, error) {
     page.Writeln("Others")
     page.Writeln("======")
     page.Writeln(fmt.Sprintf("Path: [%s]", r.URL.Path))
+    page.Writeln(fmt.Sprintf("Bind: [%s]", conf.Bind))
     page.Writeln("")
 
     return page, nil
