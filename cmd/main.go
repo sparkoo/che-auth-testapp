@@ -143,6 +143,11 @@ func handle(w http.ResponseWriter, r *http.Request) (*Page, error) {
     page.Writeln(sb.String())
     page.Writeln("")
 
+    page.Writeln("Others")
+    page.Writeln("======")
+    page.Writeln(fmt.Sprintf("Path: [%s]", r.URL.Path))
+    page.Writeln("")
+
     return page, nil
 }
 
