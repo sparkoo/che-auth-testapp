@@ -207,7 +207,7 @@ func writeConfigMaps(client *kubernetes.Clientset, namespace string, w io.Writer
 }
 
 func writeSectets(client *kubernetes.Clientset, namespace string, w io.Writer) {
-    secrets, err := client.CoreV1().Pods(namespace).List(context.TODO(), v1.ListOptions{})
+    secrets, err := client.CoreV1().Secrets(namespace).List(context.TODO(), v1.ListOptions{})
     if err != nil {
         fmt.Fprintf(w, "Something went wrong. I can't get the secrets. [%s]\n", err)
     } else {
