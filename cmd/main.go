@@ -20,7 +20,9 @@ import (
 var conf = &Conf{}
 
 type Conf struct {
-    Bind string
+    Bind         string
+    PodName      string
+    PodNamespace string
 }
 
 type Page struct {
@@ -49,9 +51,12 @@ func main() {
 }
 
 func parseArgs() *Conf {
-    flag.StringVar(&conf.Bind, "bind", ":8080", "your github username, can be set with GITHUB_USERNAME env variable")
+    flag.StringVar(&conf.Bind, "bind", ":8080", "server address to listen on")
 
     flag.Parse()
+
+    conf.PodName = os.Getenv("POD_NAME")
+    conf.PodNamespace = os.Getenv("POD_NAMESPACE")
 
     return conf
 }
@@ -112,6 +117,16 @@ func handle(w http.ResponseWriter, r *http.Request) (*Page, error) {
     }
     log.Println("token: ", page.Token)
 
+    page.Writeln("Hello, some info about me")
+    page.Writeln("=========================")
+    page.Writeln(fmt.Sprintf("Pod: [%s]", conf.PodName))
+    page.Writeln(fmt.Sprintf("Namespace: [%s]", conf.PodNamespace))
+    page.Writeln(fmt.Sprintf("Request path: [%s]", r.URL.Path))
+    page.Writeln(fmt.Sprintf("Bind: [%s]", conf.Bind))
+    page.Writeln("")
+    page.Writeln("")
+
+    page.Writeln(fmt.Sprintf("============ k8s request to [%s] namespace ============", page.Namespace))
     // request k8s
     client, err := k8sClient(page.Token)
     if err != nil {
@@ -122,6 +137,7 @@ func handle(w http.ResponseWriter, r *http.Request) (*Page, error) {
         writeSectets(client, page.Namespace, page)
         writePods(client, page.Namespace, page)
     }
+    page.Writeln("========================================================")
     page.Writeln("")
 
     // authorization headers
@@ -142,12 +158,6 @@ func handle(w http.ResponseWriter, r *http.Request) (*Page, error) {
     page.Writeln("Headers")
     page.Writeln("=============")
     page.Writeln(sb.String())
-    page.Writeln("")
-
-    page.Writeln("Others")
-    page.Writeln("======")
-    page.Writeln(fmt.Sprintf("Path: [%s]", r.URL.Path))
-    page.Writeln(fmt.Sprintf("Bind: [%s]", conf.Bind))
     page.Writeln("")
 
     return page, nil
