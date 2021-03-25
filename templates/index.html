@@ -19,6 +19,7 @@
 
   <br/>
   <br/>
+  <input type="hidden" name="X-Forwarded-Prefix" value="{{ .ForwardedPath }}" />
   <input type="submit" value="Try"/>
   <input type="button" value="Try with authorization header" onclick="sendData()"/>
 </form>
@@ -47,7 +48,7 @@
 
     const form = document.getElementById("testForm");
     const formData = new FormData(form);
-    XHR.open("GET", "/query?namespace=" + formData.get("namespace"), true);
+    XHR.open("GET", formData.get("X-Forwarded-Prefix") + "/query?namespace=" + formData.get("namespace"), true);
     if (formData.get("token")) {
       XHR.setRequestHeader('Authorization', 'Bearer ' + formData.get("token"));
     }

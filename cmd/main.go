@@ -26,9 +26,10 @@ type Conf struct {
 }
 
 type Page struct {
-    Token                string
-    Namespace            string
-    Output               string
+    Token         string
+    Namespace     string
+    Output        string
+    ForwardedPath string
 }
 
 func (page *Page) Writeln(s string) {
@@ -115,6 +116,8 @@ func handle(w http.ResponseWriter, r *http.Request) (*Page, error) {
             log.Println("Using bearer token from the authorization header.")
         }
     }
+
+    page.ForwardedPath = r.Header.Get("X-Forwarded-Prefix")
     log.Println("token: ", page.Token)
 
     page.Writeln("Hello, some info about me")
